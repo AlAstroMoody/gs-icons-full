@@ -14,6 +14,27 @@ def normalize_icon_extension(icon):
         return icon[:-4] + '.png'
     return icon
 
+def normalize_name_for_search(name):
+    """Нормализует имя для поиска: приводит к нижнему регистру и заменяет похожие символы"""
+    if not name:
+        return name
+    name_lower = name.lower()
+    # Заменяем латинские символы на кириллические для унификации
+    # a -> а, e -> е, o -> о, p -> р, c -> с, x -> х, y -> у
+    replacements = {
+        'a': 'а',  # латинская a -> кириллическая а
+        'e': 'е',  # латинская e -> кириллическая е
+        'o': 'о',  # латинская o -> кириллическая о
+        'p': 'р',  # латинская p -> кириллическая р
+        'c': 'с',  # латинская c -> кириллическая с
+        'x': 'х',  # латинская x -> кириллическая х
+        'y': 'у',  # латинская y -> кириллическая у
+    }
+    normalized = ''
+    for char in name_lower:
+        normalized += replacements.get(char, char)
+    return normalized
+
 def get_relic_base_name(name):
     """Извлекает базовое имя реликвария (без номера в скобках)"""
     if not name.startswith('Реликварий'):
@@ -47,18 +68,19 @@ def fill_relic_icons(result):
             item['icon'] = relics_with_icons[base_name]
 
 def load_craft_json(filename):
-    """Загружает craft.json и создает словарь для поиска по имени"""
+    """Загружает craft.json и создает словарь для поиска по имени (без учета регистра и похожих символов)"""
     with open(filename, 'r', encoding='utf-8') as f:
         data = json.load(f)
     
-    # Создаем словарь: имя -> иконка
+    # Создаем словарь: нормализованное имя -> иконка
     name_to_icon = {}
     for item in data:
         name = item.get('name', '').strip()
         src = item.get('src', '').strip()
         if name and src:
-            # Нормализуем расширение иконки
-            name_to_icon[name] = normalize_icon_extension(src)
+            # Нормализуем расширение иконки и используем нормализованное имя как ключ
+            normalized_name = normalize_name_for_search(name)
+            name_to_icon[normalized_name] = normalize_icon_extension(src)
     
     return name_to_icon
 
@@ -101,9 +123,10 @@ def parse_csv_to_json(csv_filename, craft_json_filename, output_filename):
                 desc = row[3].strip() if len(row) > 3 and row[3] else ""
                 icon = row[4].strip() if len(row) > 4 and row[4] else ""
                 
-                # Если иконка не указана, ищем по имени в craft.json
+                # Если иконка не указана, ищем по имени в craft.json (без учета регистра и похожих символов)
                 if not icon and name:
-                    icon = name_to_icon.get(name, "")
+                    normalized_name = normalize_name_for_search(name)
+                    icon = name_to_icon.get(normalized_name, "")
                 
                 # Нормализуем расширение иконки (.blp -> .png)
                 icon = normalize_icon_extension(icon)
