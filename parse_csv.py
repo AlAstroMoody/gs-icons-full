@@ -3,6 +3,14 @@
 import csv
 import json
 
+def normalize_icon_extension(icon):
+    """Заменяет расширение .blp на .png для иконок"""
+    if not icon:
+        return icon
+    if icon.endswith('.blp'):
+        return icon[:-4] + '.png'
+    return icon
+
 def load_craft_json(filename):
     """Загружает craft.json и создает словарь для поиска по имени"""
     with open(filename, 'r', encoding='utf-8') as f:
@@ -14,7 +22,8 @@ def load_craft_json(filename):
         name = item.get('name', '').strip()
         src = item.get('src', '').strip()
         if name and src:
-            name_to_icon[name] = src
+            # Нормализуем расширение иконки
+            name_to_icon[name] = normalize_icon_extension(src)
     
     return name_to_icon
 
@@ -60,6 +69,9 @@ def parse_csv_to_json(csv_filename, craft_json_filename, output_filename):
                 # Если иконка не указана, ищем по имени в craft.json
                 if not icon and name:
                     icon = name_to_icon.get(name, "")
+                
+                # Нормализуем расширение иконки (.blp -> .png)
+                icon = normalize_icon_extension(icon)
                 
                 # Инициализируем новую запись
                 desc_parts = [desc] if desc else []
