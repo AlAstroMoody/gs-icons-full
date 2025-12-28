@@ -2,14 +2,49 @@
 # -*- coding: utf-8 -*-
 import csv
 import json
+import re
 
 def normalize_icon_extension(icon):
-    """Заменяет расширение .blp на .png для иконок"""
+    """Заменяет расширение .blp/.BLP на .png для иконок"""
     if not icon:
         return icon
-    if icon.endswith('.blp'):
+    # Обрабатываем оба варианта: .blp и .BLP
+    icon_lower = icon.lower()
+    if icon_lower.endswith('.blp'):
         return icon[:-4] + '.png'
     return icon
+
+def get_relic_base_name(name):
+    """Извлекает базовое имя реликвария (без номера в скобках)"""
+    if not name.startswith('Реликварий'):
+        return None
+    # Ищем скобку с номером в конце
+    match = re.match(r'^(Реликварий .+?)\(\d+\)$', name)
+    if match:
+        return match.group(1)
+    return None
+
+def fill_relic_icons(result):
+    """Заполняет отсутствующие иконки реликвариев из других версий с тем же базовым именем"""
+    # Создаем словарь: базовое имя -> иконка
+    relics_with_icons = {}
+    relics_without_icons = []
+    
+    for item in result:
+        base_name = get_relic_base_name(item['name'])
+        if base_name:
+            if item['icon']:
+                # У этого реликвария есть иконка - сохраняем её для базового имени
+                if base_name not in relics_with_icons:
+                    relics_with_icons[base_name] = item['icon']
+            else:
+                # У этого реликвария нет иконки
+                relics_without_icons.append((item, base_name))
+    
+    # Заполняем отсутствующие иконки
+    for item, base_name in relics_without_icons:
+        if base_name in relics_with_icons:
+            item['icon'] = relics_with_icons[base_name]
 
 def load_craft_json(filename):
     """Загружает craft.json и создает словарь для поиска по имени"""
@@ -92,6 +127,9 @@ def parse_csv_to_json(csv_filename, craft_json_filename, output_filename):
         if current_item and current_item['name']:
             current_item['desc'] = '\n'.join(desc_parts).strip()
             result.append(current_item)
+    
+    # Заполняем отсутствующие иконки реликвариев из других версий
+    fill_relic_icons(result)
     
     # Сохраняем результат в JSON
     with open(output_filename, 'w', encoding='utf-8') as f:
