@@ -14,6 +14,27 @@ def normalize_icon_extension(icon):
         return icon[:-4] + '.png'
     return icon
 
+def get_direct_icon(name):
+    """Возвращает иконку напрямую для определенных предметов"""
+    # Прямое назначение иконок
+    direct_icons = {
+        'Сырный Двигатель': 'BTNCheese.png',
+    }
+    return direct_icons.get(name, None)
+
+def get_name_mapping(name):
+    """Возвращает альтернативное название для поиска в craft.json по специальным правилам"""
+    # Специальные правила сопоставления названий
+    name_mappings = {
+        'Корпус "Буро"': 'Корпус Буро',
+        'Полуфилософский камень': 'Полу-философский камень',
+        'Огнемет': 'Огнемёт',
+        'Руна': 'Древняя Руна',
+        'Зелье магии': 'Магическое Зелье',
+        'Зелье интеллекта': 'Зелье интелекта',
+    }
+    return name_mappings.get(name, name)
+
 def normalize_name_for_search(name):
     """Нормализует имя для поиска: приводит к нижнему регистру и заменяет похожие символы"""
     if not name:
@@ -125,8 +146,15 @@ def parse_csv_to_json(csv_filename, craft_json_filename, output_filename):
                 
                 # Если иконка не указана, ищем по имени в craft.json (без учета регистра и похожих символов)
                 if not icon and name:
-                    normalized_name = normalize_name_for_search(name)
-                    icon = name_to_icon.get(normalized_name, "")
+                    # Сначала проверяем прямое назначение иконок
+                    direct_icon = get_direct_icon(name)
+                    if direct_icon:
+                        icon = direct_icon
+                    else:
+                        # Затем проверяем специальные правила сопоставления
+                        mapped_name = get_name_mapping(name)
+                        normalized_name = normalize_name_for_search(mapped_name)
+                        icon = name_to_icon.get(normalized_name, "")
                 
                 # Нормализуем расширение иконки (.blp -> .png)
                 icon = normalize_icon_extension(icon)
